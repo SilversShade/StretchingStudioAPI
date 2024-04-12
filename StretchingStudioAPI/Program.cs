@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.EntityFrameworkCore;
 using StretchingStudioAPI.Data;
+using StretchingStudioAPI.Middleware.Transformers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,8 +14,13 @@ if (builder.Environment.IsDevelopment())
     // в проде заменить получение connection string на переменные окружения
     builder.Services.AddDbContext<AuthContext>(options =>
         options.UseNpgsql(builder.Configuration["AuthConnection"]));
+
+    builder.Services.AddDbContext<BookingServiceContext>(options => 
+        options.UseNpgsql(builder.Configuration["BookingServiceConnection"]));
 }
 
+builder.Services.AddControllers(options =>
+    options.Conventions.Add(new RouteTokenTransformerConvention(new ToKebabParameterTransformer())));
 builder.Services.AddAuthorization();
 builder.Services.AddIdentityApiEndpoints<IdentityUser>()
     .AddEntityFrameworkStores<AuthContext>();
@@ -29,5 +36,7 @@ if (app.Environment.IsDevelopment())
 app.MapIdentityApi<IdentityUser>();
 
 app.UseHttpsRedirection();
+
+app.MapControllers();
 
 app.Run();
