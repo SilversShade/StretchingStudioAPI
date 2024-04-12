@@ -17,6 +17,17 @@ if (builder.Environment.IsDevelopment())
 
     builder.Services.AddDbContext<BookingServiceContext>(options => 
         options.UseNpgsql(builder.Configuration["BookingServiceConnection"]));
+
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowAll", policyBuilder =>
+        {
+            policyBuilder
+                .AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+        });
+    });
 }
 
 builder.Services.AddControllers(options =>
@@ -26,6 +37,11 @@ builder.Services.AddIdentityApiEndpoints<IdentityUser>()
     .AddEntityFrameworkStores<AuthContext>();
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("AllowAll");
+}
 
 if (app.Environment.IsDevelopment())
 {
