@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StretchingStudioAPI.Data;
 using StretchingStudioAPI.Models;
+using StretchingStudioAPI.Models.Subscriptions;
 
 namespace StretchingStudioAPI.Controllers;
 
@@ -9,19 +11,48 @@ namespace StretchingStudioAPI.Controllers;
 [Route("api/v1/[action]")]
 public class SubscriptionsController : ControllerBase
 {
-    private readonly ILogger<SubscriptionsController> _logger;
-    private readonly BookingServiceContext _dbContext;
+    private readonly BookingServiceContext _bookingContext;
+    private readonly AuthContext _authContext;
     
-    public SubscriptionsController(ILogger<SubscriptionsController> logger, BookingServiceContext dbContext)
+    public SubscriptionsController(BookingServiceContext bookingContext, AuthContext authContext)
     {
-        _logger = logger;
-        _dbContext = dbContext;
+        _bookingContext = bookingContext;
+        _authContext = authContext;
     }
 
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> PurchaseSubscription([FromBody] PurchaseSubscription requestedSubscription)
+    {
+        var user = await _authContext.Users.SingleOrDefaultAsync(u => u.Email == HttpContext.User.Identity!.Name);
+        
+        var subscription = await _bookingContext.AvailableSubscriptions.SingleOrDefaultAsync(s => s.Id == requestedSubscription.SubscriptionId);
+
+        if (subscription is null)
+            return NotFound(new
+            {
+                message = "Subscription with the given ID wasn't found"
+            });
+        
+        var newSubscription = new UserSubscription
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.Parse(user!.Id),
+            Subscription = subscription,
+            SessionsLeft = subscription.SessionsNum
+        };
+        
+        await _bookingContext.UserSubscriptions.AddAsync(newSubscription);
+        
+        await _bookingContext.SaveChangesAsync();
+
+        return Ok(newSubscription);
+    }
+    
     [HttpGet]
     public async Task<ActionResult<List<AvailableSubscription>>> AvailableSubscriptions()
     {
-        var subscriptions = await _dbContext.AvailableSubscriptions
+        var subscriptions = await _bookingContext.AvailableSubscriptions
             .OrderBy(s => s.Price)
             .ToListAsync();
         
