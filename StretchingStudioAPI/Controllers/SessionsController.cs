@@ -62,10 +62,10 @@ public class SessionsController : ControllerBase
                 noFreeSlotsMessage = "No slots available for the requested session."
             });
         
-        if (session.StartingDate <= DateTime.Now)
+        if (session.StartingDate < DateTime.UtcNow + TimeSpan.FromHours(5))
             return Conflict(new
             {
-                dateConflictMessage = "It's too late to sign up for this session."
+                dateConflictMessage = "It's too late for signing up for this session."
             });
         
         var bookedSession = new BookedSession
