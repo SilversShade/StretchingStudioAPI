@@ -19,7 +19,6 @@ public class SubscriptionsController : ControllerBase
         _bookingContext = bookingContext;
         _authContext = authContext;
     }
-
     
     [HttpGet]
     [Authorize]

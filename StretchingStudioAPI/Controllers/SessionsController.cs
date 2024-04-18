@@ -21,14 +21,16 @@ public class SessionsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<UpcomingSession>>> UpcomingSessions()
+    public async Task<ActionResult<List<UpcomingSession>>> UpcomingSessions(
+        [FromQuery(Name = "free-slots-only")] bool freeSlotsOnly)
     {
         var sessions = await _bookingContext.UpcomingSessions
+            .Where(s => s.StartingDate > DateTime.UtcNow + TimeSpan.FromHours(5))
             .Include(s => s.SessionType)
             .OrderBy(s => s.StartingDate)
             .ToListAsync();
 
-        return sessions;
+        return freeSlotsOnly ? sessions.Where(s => s.FreeSlotsNum > 0).ToList() : sessions;
     }
     
     [HttpPost]
