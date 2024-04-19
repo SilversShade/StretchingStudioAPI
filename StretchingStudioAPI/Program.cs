@@ -33,7 +33,11 @@ if (builder.Environment.IsDevelopment())
 builder.Services.AddControllers(options =>
     options.Conventions.Add(new RouteTokenTransformerConvention(new ToKebabParameterTransformer())));
 builder.Services.AddAuthorization();
-builder.Services.AddIdentityApiEndpoints<IdentityUser>()
+builder.Services.AddIdentityApiEndpoints<IdentityUser>(options =>
+    {
+        options.Password.RequireNonAlphanumeric = false;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+    })
     .AddEntityFrameworkStores<AuthContext>();
 
 var app = builder.Build();

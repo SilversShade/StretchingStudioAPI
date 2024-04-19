@@ -21,6 +21,23 @@ public class SessionsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
+    public async Task<ActionResult<List<BookedSession>>> UserSessions()
+    {
+        var user = await _authContext.Users.SingleOrDefaultAsync(u => u.Email == HttpContext.User.Identity!.Name);
+
+        var userSessions = await _bookingContext.BookedSessions
+            .Where(s => s.UserId == Guid.Parse(user!.Id))
+            .Include(s => s.Session)
+            .Include(s => s.Session.SessionType)
+            .ToListAsync();
+
+        return Ok(userSessions
+            .OrderBy(s => s.Session.StartingDate)
+            .Where(s => s.Session.StartingDate > DateTime.UtcNow + TimeSpan.FromHours(5)));
+    }
+    
+    [HttpGet]
     public async Task<ActionResult<List<UpcomingSession>>> UpcomingSessions(
         [FromQuery(Name = "free-slots-only")] bool freeSlotsOnly)
     {
@@ -39,11 +56,12 @@ public class SessionsController : ControllerBase
     {
         var user = await _authContext.Users.SingleOrDefaultAsync(u => u.Email == HttpContext.User.Identity!.Name);
 
-        var userSubscription = await _bookingContext.UserSubscriptions.FirstOrDefaultAsync();
+        var userSubscription = await _bookingContext.UserSubscriptions
+            .FirstOrDefaultAsync(s => s.UserId == Guid.Parse(user!.Id));
         if (userSubscription is null || userSubscription.SessionsLeft == 0)
             return Conflict(new
             {
-                noSubscriptionMessage = "User must own a valid subscription to sign up for a session."
+                message = "Необходимо приобрести абонемент для записи на тренировку."
             });
         
         var session = await _bookingContext.UpcomingSessions
@@ -53,19 +71,29 @@ public class SessionsController : ControllerBase
         if (session is null)
             return NotFound(new
             {
-                noRequestedSessionMessage = "Session with requested ID wasn't found in upcoming sessions."
+                message = "Запрашиваемая тренировка не была найдена."
             });
         
         if (session.FreeSlotsNum == 0)
             return Conflict(new
             {
-                noFreeSlotsMessage = "No slots available for the requested session."
+                message = "На выбранную тренировку не осталось свободных мест."
             });
         
         if (session.StartingDate < DateTime.UtcNow + TimeSpan.FromHours(5))
             return Conflict(new
             {
-                dateConflictMessage = "It's too late for signing up for this session."
+                message = "Время для записи на выбранную тренировку истекло."
+            });
+
+        var duplicateBooking = await _bookingContext.BookedSessions
+            .SingleOrDefaultAsync(s =>
+                s.UserId == Guid.Parse(user!.Id) && s.Session.Id == requestedSession.SessionId);
+        
+        if (duplicateBooking is not null)
+            return Conflict(new
+            {
+                message = "Вы уже записаны на данную тренировку."
             });
         
         var bookedSession = new BookedSession
