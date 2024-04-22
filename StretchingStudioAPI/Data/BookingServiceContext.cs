@@ -14,4 +14,6 @@ public class BookingServiceContext(DbContextOptions options) : DbContext(options
     public DbSet<UpcomingSession> UpcomingSessions { get; set; } = null!;
 
     public DbSet<UserSubscription> UserSubscriptions { get; set; } = null!;
+
+    public DbSet<Schedule> Schedule { get; set; } = null!;
 }

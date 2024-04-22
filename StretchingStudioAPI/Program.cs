@@ -45,10 +45,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseCors("AllowAll");
-}
-
-if (app.Environment.IsDevelopment())
-{
+    
     app.UseSwagger();
     app.UseSwaggerUI();
 }
